@@ -22,7 +22,7 @@ let channel
 let bot
 let dictionary
 
-let accessKey = 'fc7253e3cc8344c6ae12049c0b80773b'
+let accessKey = config.microsoft_token
 let uri = 'westus.api.cognitive.microsoft.com'
 let path = '/text/analytics/v2.0/sentiment'
 
