@@ -29,18 +29,48 @@ let path = '/text/analytics/v2.0/sentiment'
 let rtm = new RtmClient(config.slackbot_token)
 
 rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (rtmStartData) => {
+  console.log(rtmStartData.channels);
   for (const c of rtmStartData.channels) {
-    if (c.is_member && c.name === 'general') { channel = c.id, channelName = c.name }
+    if (c.is_member && c.name === 'general') {
+      channel = c.id, channelName = c.name }
   }
   bot = '<@' + rtmStartData.self.id + '>'
 })
 
 rtm.on(CLIENT_EVENTS.RTM.RTM_CONNECTION_OPENED, function () {
-  rtm.sendMessage('Testing from index.js!', channel)
+  console.log('connection opened');
 })
 
 rtm.on(RTM_EVENTS.MESSAGE, function (message) {
-  if (message.channel === channel) {
+  if (message.channel === 'D7W5R9KJB') {
+    let pieces = []
+    if (message.text !== null) {
+      pieces = message.text.split(' ')
+      console.log(pieces);
+
+      if (pieces.length > 1) {
+        if (pieces[0] === bot) {
+          var helpResponse = '<@' + message.user + '>'
+
+          switch (pieces[1].toLowerCase()) {
+            case 'jump':
+              helpResponse += '"Kris Kross will make you jump jump"'
+              break
+            case 'help':
+              helpResponse += `, I am here for you if you are currently stressed or frustrated at work. Type one of the following commands for more information: ${bot} depression, ${bot} suicide, or ${bot} anxiety`
+              break
+            default:
+              helpResponse += ', sorry I do not understand the command "' + pieces[1] + '". For a list of supported commands, type: ' + bot + ' help'
+              break
+          }
+
+          rtm.sendMessage(helpResponse, message.channel)
+        }
+      }
+    }
+  }
+  else if (message.channel === channel) {
+    console.log(message.channel, channel)
     if (message.text !== null) {
       let suggestion
       let suggestionQuery = message.text
@@ -48,7 +78,6 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
       dictionary.forEach(function (keyPair) {
         if (suggestionQuery.includes(keyPair[0])) {
           suggestion = suggestionQuery.replace(keyPair[0], keyPair[1])
-          console.log(suggestion)
         }
       })
 
@@ -97,9 +126,9 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
             if (parsedMessage.type === 'message' && parsedMessage.channel &&
               parsedMessage.channel[0] === 'D' && parsedMessage.user !== bot.id) {
               // reply on the web socket.
-              const reply = {
+              let reply = {
                 type: 'message',
-                text: suggestion,
+                text: `You should consider phrasing your message like: '${suggestion}'. If you need more help with any emotional issues, type '@talk-kindly help' for more information!`,
                 channel: parsedMessage.channel
               }
 
@@ -118,6 +147,7 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
               })
 
               connection.sendUTF(JSON.stringify(reply))
+              suggestion = ''
             }
           })
         })
