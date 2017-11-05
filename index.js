@@ -22,10 +22,6 @@ let channel
 let bot
 let dictionary
 
-let accessKey = config.microsoft_token
-let uri = 'westus.api.cognitive.microsoft.com'
-let path = '/text/analytics/v2.0/sentiment'
-
 let rtm = new RtmClient(config.slackbot_token)
 
 rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (rtmStartData) => {
@@ -187,7 +183,7 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
         'text': `${message.text}`
       }]}
       const textAnalyticsClient = new cognitiveServices.textAnalytics({
-        apiKey: 'fc7253e3cc8344c6ae12049c0b80773b',
+        apiKey: config.microsoft_token,
         endpoint: 'westus.api.cognitive.microsoft.com'
       })
       let score
