@@ -124,7 +124,6 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
           }
         }
         client.on('connect', function (connection) {
-          console.log('Slack bot ready')
           connection.on('message', function (message) {
             const parsedMessage = JSON.parse(message.utf8Data)
 
@@ -191,7 +190,6 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
         headers,
         body
       }).then((response) => {
-        console.log(response.documents[0].score)
         score = response.documents[0].score
         let req = https.request(config.slackbot_option, function (res) {
           var chunks = []
