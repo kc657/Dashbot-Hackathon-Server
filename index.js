@@ -12,10 +12,9 @@ const _ = require('lodash')
 let WebSocketClient = require('websocket').client
 let client = new WebSocketClient()
 
-var urlRoot = config.DASHBOT_URL_ROOT || 'https://tracker.dashbot.io/track'
+var urlRoot = 'https://tracker.dashbot.io/track'
 var apiKey = config.dashbot_token
 var slackKey = config.slackbot_token
-var version = JSON.parse(fs.readFileSync(__dirname + '/package.json')).version + '-rest'
 var debug = true
 
 let channel
@@ -43,7 +42,7 @@ rp('https://slack.com/api/rtm.start?token=' + slackKey, function (error, respons
   const parsedData = JSON.parse(response.body)
 
   // Tell dashbot when you connect.
-  var url = urlRoot + '?apiKey=' + apiKey + '&type=connect&platform=slack&v=' + version
+  var url = urlRoot + '?apiKey=' + apiKey + '&type=connect&platform=slack'
   rp({
     uri: url,
     method: 'POST',
@@ -68,7 +67,7 @@ rp('https://slack.com/api/rtm.start?token=' + slackKey, function (error, respons
       const parsedMessage = JSON.parse(message.utf8Data)
 
       // Tell dashbot when a message arrives
-      var url = urlRoot + '?apiKey=' + apiKey + '&type=incoming&platform=slack&v=' + version
+      var url = urlRoot + '?apiKey=' + apiKey + '&type=incoming&platform=slack'
       var toSend = _.clone(baseMessage)
       toSend.message = parsedMessage
       if (debug) {
@@ -91,7 +90,7 @@ rp('https://slack.com/api/rtm.start?token=' + slackKey, function (error, respons
         }
 
         // Tell dashbot about your response
-        var url = urlRoot + '?apiKey=' + apiKey + '&type=outgoing&platform=slack&v=' + version
+        var url = urlRoot + '?apiKey=' + apiKey + '&type=outgoing&platform=slack'
         var toSend = _.clone(baseMessage)
         toSend.message = reply
         if (debug) {
@@ -112,7 +111,6 @@ rp('https://slack.com/api/rtm.start?token=' + slackKey, function (error, respons
 })
 
 rtm.on(RTM_EVENTS.MESSAGE, function (message) {
-  console.log(message)
   if (message.channel === channel) {
     if (message.text !== null) {
       // MICROSOFT TEXT ANALYSIS
@@ -175,9 +173,9 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
           var body = Buffer.concat(chunks)
         })
       })
-
+      console.log('!!!!!!!!!!!', message);
       req.write(qs.stringify({ token: config.slackbot_token,
-        channel: message.user,
+        channel: 'D7W5R9KJB',
         text: `You recently said '${message.text}' in the ${channelName} channel. Your message may come off as condescending or rude since it scored a 0.4 on our sentiment detection. We strongly advise you to change your message to one of the following suggestions below:` }))
       req.end()
     }
