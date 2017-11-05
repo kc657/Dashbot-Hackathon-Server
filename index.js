@@ -43,8 +43,6 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
     let pieces = []
     if (message.text !== null) {
       pieces = message.text.split(' ')
-      console.log(pieces)
-
       if (pieces.length > 1) {
         if (pieces[0] === bot) {
           var helpResponse = '<@' + message.user + '>'
@@ -54,7 +52,10 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
               helpResponse += `, I am here for you if you are currently stressed or frustrated at work. Type one of the following commands for more information: ${bot} depression, ${bot} suicide, or ${bot} anxiety`
               break
             case 'depression':
-              helpResponse += `, sorry to hear that you are depressed. May I suggest this article...`
+              helpResponse += `, sorry to hear that you are depressed. Here's an article of cute animals that may help: https://www.boredpanda.com/cute-baby-animals/. If you want to talk a little more, type ${bot} counseling for personalize counseling.`
+              break
+            case 'counseling':
+              helpResponse += `, let's try to put your feelings into words and work through any rough emotions.`
               break
             case 'anxiety':
               helpResponse += `, anxiety really sucks. We have some anxiety exercises that may help! Type one of the following commands to try these out: ${bot} exerciseOne or ${bot} exerciseTwo `
