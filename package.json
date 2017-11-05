@@ -10,7 +10,12 @@
   "license": "ISC",
   "dependencies": {
     "@slack/client": "^3.14.1",
+    "dashbot": "^9.4.0",
+    "fs": "0.0.1-security",
     "jquery": "^3.2.1",
-    "request": "^2.83.0"
+    "lodash": "^4.17.4",
+    "request": "^2.83.0",
+    "request-promise": "^4.2.2",
+    "websocket": "^1.0.25"
   }
 }

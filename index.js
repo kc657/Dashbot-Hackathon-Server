@@ -5,6 +5,18 @@ const qs = require('querystring')
 const https = require('https')
 const request = require('request')
 const config = require('./env.json')
+const dashbot = require('dashbot')(config.dashbot_token).slack
+const rp = require('request-promise')
+const fs = require('fs')
+const _ = require('lodash')
+let WebSocketClient = require('websocket').client
+let client = new WebSocketClient()
+
+var urlRoot = config.DASHBOT_URL_ROOT || 'https://tracker.dashbot.io/track'
+var apiKey = config.dashbot_token
+var slackKey = config.slackbot_token
+var version = JSON.parse(fs.readFileSync(__dirname + '/package.json')).version + '-rest'
+var debug = true
 
 let channel
 let bot
@@ -20,8 +32,6 @@ rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (rtmStartData) => {
   for (const c of rtmStartData.channels) {
     if (c.is_member && c.name === 'general') { channel = c.id, channelName = c.name }
   }
-  console.log(`Logged in as ${rtmStartData.self.name} of team ${rtmStartData.team.name}`)
-
   bot = '<@' + rtmStartData.self.id + '>'
 })
 
@@ -29,12 +39,84 @@ rtm.on(CLIENT_EVENTS.RTM.RTM_CONNECTION_OPENED, function () {
   rtm.sendMessage('Testing from index.js!', channel)
 })
 
+rp('https://slack.com/api/rtm.start?token=' + slackKey, function (error, response) {
+  const parsedData = JSON.parse(response.body)
+
+  // Tell dashbot when you connect.
+  var url = urlRoot + '?apiKey=' + apiKey + '&type=connect&platform=slack&v=' + version
+  rp({
+    uri: url,
+    method: 'POST',
+    json: parsedData
+  })
+
+  const bot = parsedData.self
+  const team = parsedData.team
+  const baseMessage = {
+    token: slackKey,
+    team: {
+      id: team.id,
+      name: team.name
+    },
+    bot: {
+      id: bot.id
+    }
+  }
+  client.on('connect', function (connection) {
+    console.log('Slack bot ready')
+    connection.on('message', function (message) {
+      const parsedMessage = JSON.parse(message.utf8Data)
+
+      // Tell dashbot when a message arrives
+      var url = urlRoot + '?apiKey=' + apiKey + '&type=incoming&platform=slack&v=' + version
+      var toSend = _.clone(baseMessage)
+      toSend.message = parsedMessage
+      if (debug) {
+        console.log('Dashbot incoming: ' + url)
+        console.log(JSON.stringify(toSend, null, 2))
+      }
+      rp({
+        uri: url,
+        method: 'POST',
+        json: toSend
+      })
+
+      if (parsedMessage.type === 'message' && parsedMessage.channel &&
+        parsedMessage.channel[0] === 'D' && parsedMessage.user !== bot.id) {
+        // reply on the web socket.
+        const reply = {
+          type: 'message',
+          text: 'You are right when you say: ' + parsedMessage.text,
+          channel: parsedMessage.channel
+        }
+
+        // Tell dashbot about your response
+        var url = urlRoot + '?apiKey=' + apiKey + '&type=outgoing&platform=slack&v=' + version
+        var toSend = _.clone(baseMessage)
+        toSend.message = reply
+        if (debug) {
+          console.log('Dashbot outgoing: ' + url)
+          console.log(JSON.stringify(toSend, null, 2))
+        }
+        rp({
+          uri: url,
+          method: 'POST',
+          json: toSend
+        })
+
+        connection.sendUTF(JSON.stringify(reply))
+      }
+    })
+  })
+  client.connect(parsedData.url)
+})
+
 rtm.on(RTM_EVENTS.MESSAGE, function (message) {
   console.log(message)
   if (message.channel === channel) {
     if (message.text !== null) {
-
-      //MICROSOFT TEXT ANALYSIS
+      // MICROSOFT TEXT ANALYSIS
+      let sentimentScore
       let response_handler = function (response) {
         let body = ''
         response.on('data', function (d) {
@@ -43,7 +125,6 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
         response.on('end', function () {
           let body_ = JSON.parse(body)
           let body__ = JSON.stringify(body_, null, '  ')
-          console.log(body__)
         })
         response.on('error', function (e) {
           console.log('Error: ' + e.message)
@@ -75,12 +156,13 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
         qs: { q: message.text },
         headers:
         { 'postman-token': '34419346-e804-50a0-5c34-b873572d5a28',
-          'cache-control': 'no-cache' } }
+          'cache-control': 'no-cache' }
+      }
 
       request(options, function (error, response, body) {
         if (error) throw new Error(error)
 
-        console.log(body)
+        console.log('HISA API   ', body)
       })
 
       // SLACK PUSH PRIVATE MESSAGE TO USER
@@ -91,7 +173,6 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
         })
         res.on('end', function () {
           var body = Buffer.concat(chunks)
-          console.log(body.toString())
         })
       })
 
