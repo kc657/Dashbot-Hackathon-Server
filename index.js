@@ -10,6 +10,10 @@ let channel
 let bot
 let dictionary
 
+let accessKey = 'fc7253e3cc8344c6ae12049c0b80773b'
+let uri = 'westus.api.cognitive.microsoft.com'
+let path = '/text/analytics/v2.0/sentiment'
+
 let rtm = new RtmClient(config.slackbot_token)
 
 rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (rtmStartData) => {
@@ -29,7 +33,43 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
   console.log(message)
   if (message.channel === channel) {
     if (message.text !== null) {
-      console.log(message.text);
+
+      //MICROSOFT TEXT ANALYSIS
+      let response_handler = function (response) {
+        let body = ''
+        response.on('data', function (d) {
+          body += d
+        })
+        response.on('end', function () {
+          let body_ = JSON.parse(body)
+          let body__ = JSON.stringify(body_, null, '  ')
+          console.log(body__)
+        })
+        response.on('error', function (e) {
+          console.log('Error: ' + e.message)
+        })
+      }
+      let get_sentiments = function (documents) {
+        let body = JSON.stringify(documents)
+        let request_params = {
+          method: 'POST',
+          hostname: uri,
+          path: path,
+          headers: {
+            'Ocp-Apim-Subscription-Key': accessKey
+          }
+        }
+        let req = https.request(request_params, response_handler)
+        req.write(body)
+        req.end()
+      }
+      let documents = { 'documents': [
+        { 'id': '1', 'language': 'en', 'text': `${message.text}` }
+      ]}
+      let sentiments = get_sentiments(documents)
+      console.log(sentiments)
+
+      // HISA API DICIONARY
       var options = { method: 'GET',
         url: 'http://160.16.100.143:8000/paraphrase/ver1.0/',
         qs: { q: message.text },
@@ -43,6 +83,7 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
         console.log(body)
       })
 
+      // SLACK PUSH PRIVATE MESSAGE TO USER
       let req = https.request(config.slackbot_option, function (res) {
         var chunks = []
         res.on('data', function (chunk) {
