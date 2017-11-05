@@ -39,90 +39,100 @@ rtm.on(CLIENT_EVENTS.RTM.RTM_CONNECTION_OPENED, function () {
   rtm.sendMessage('Testing from index.js!', channel)
 })
 
-rp('https://slack.com/api/rtm.start?token=' + slackKey, function (error, response) {
-  const parsedData = JSON.parse(response.body)
-
-  // Tell dashbot when you connect.
-  var url = urlRoot + '?apiKey=' + apiKey + '&type=connect&platform=slack'
-  rp({
-    uri: url,
-    method: 'POST',
-    json: parsedData
-  })
-
-  const bot = parsedData.self
-  const team = parsedData.team
-  const baseMessage = {
-    token: slackKey,
-    team: {
-      id: team.id,
-      name: team.name
-    },
-    bot: {
-      id: bot.id
-    }
-  }
-  client.on('connect', function (connection) {
-    console.log('Slack bot ready')
-    connection.on('message', function (message) {
-      const parsedMessage = JSON.parse(message.utf8Data)
-
-      // Tell dashbot when a message arrives
-      var url = urlRoot + '?apiKey=' + apiKey + '&type=incoming&platform=slack'
-      var toSend = _.clone(baseMessage)
-      toSend.message = parsedMessage
-      if (debug) {
-        console.log('Dashbot incoming: ' + url)
-        console.log(JSON.stringify(toSend, null, 2))
-      }
-      rp({
-        uri: url,
-        method: 'POST',
-        json: toSend
-      })
-
-      if (parsedMessage.type === 'message' && parsedMessage.channel &&
-        parsedMessage.channel[0] === 'D' && parsedMessage.user !== bot.id) {
-        // reply on the web socket.
-        const reply = {
-          type: 'message',
-          text: 'You are right when you say: ' + parsedMessage.text,
-          channel: parsedMessage.channel
-        }
-
-        // Tell dashbot about your response
-        var url = urlRoot + '?apiKey=' + apiKey + '&type=outgoing&platform=slack'
-        var toSend = _.clone(baseMessage)
-        toSend.message = reply
-        if (debug) {
-          console.log('Dashbot outgoing: ' + url)
-          console.log(JSON.stringify(toSend, null, 2))
-        }
-        rp({
-          uri: url,
-          method: 'POST',
-          json: toSend
-        })
-
-        connection.sendUTF(JSON.stringify(reply))
-      }
-    })
-  })
-  client.connect(parsedData.url)
-})
-
 rtm.on(RTM_EVENTS.MESSAGE, function (message) {
   if (message.channel === channel) {
     if (message.text !== null) {
+      let suggestion
+      let suggestionQuery = message.text
+      let dictionary = [['can you', 'would you kindly'], ['hate', 'dislike'], ['screw you', 'can you not...'], ["coup d'etat", 'If you stage a coup, you will all be fired! Big brother is watching you all...']]
+      dictionary.forEach(function (keyPair) {
+        if (suggestionQuery.includes(keyPair[0])) {
+          suggestion = suggestionQuery.replace(keyPair[0], keyPair[1])
+          console.log(suggestion)
+        }
+      })
+
+      rp('https://slack.com/api/rtm.start?token=' + slackKey, function (error, response) {
+        const parsedData = JSON.parse(response.body)
+
+        // Tell dashbot when you connect.
+        var url = urlRoot + '?apiKey=' + apiKey + '&type=connect&platform=slack'
+        rp({
+          uri: url,
+          method: 'POST',
+          json: parsedData
+        })
+
+        const bot = parsedData.self
+        const team = parsedData.team
+        const baseMessage = {
+          token: slackKey,
+          team: {
+            id: team.id,
+            name: team.name
+          },
+          bot: {
+            id: bot.id
+          }
+        }
+        client.on('connect', function (connection) {
+          console.log('Slack bot ready')
+          connection.on('message', function (message) {
+            const parsedMessage = JSON.parse(message.utf8Data)
+
+            // Tell dashbot when a message arrives
+            var url = urlRoot + '?apiKey=' + apiKey + '&type=incoming&platform=slack'
+            var toSend = _.clone(baseMessage)
+            toSend.message = parsedMessage
+            if (debug) {
+              console.log('Dashbot incoming: ' + url)
+              console.log(JSON.stringify(toSend, null, 2))
+            }
+            rp({
+              uri: url,
+              method: 'POST',
+              json: toSend
+            })
+
+            if (parsedMessage.type === 'message' && parsedMessage.channel &&
+              parsedMessage.channel[0] === 'D' && parsedMessage.user !== bot.id) {
+              // reply on the web socket.
+              const reply = {
+                type: 'message',
+                text: suggestion,
+                channel: parsedMessage.channel
+              }
+
+              // Tell dashbot about your response
+              var url = urlRoot + '?apiKey=' + apiKey + '&type=outgoing&platform=slack'
+              var toSend = _.clone(baseMessage)
+              toSend.message = reply
+              if (debug) {
+                console.log('Dashbot outgoing: ' + url)
+                console.log(JSON.stringify(toSend, null, 2))
+              }
+              rp({
+                uri: url,
+                method: 'POST',
+                json: toSend
+              })
+
+              connection.sendUTF(JSON.stringify(reply))
+            }
+          })
+        })
+        client.connect(parsedData.url)
+      })
+
       // MICROSOFT TEXT ANALYSIS
       const headers = {
         'Content-type': 'application/json'
       }
       const body = {'documents': [{
-            'language': 'en',
-            'id': '1',
-            'text': `${message.text}`
-          }]}
+        'language': 'en',
+        'id': '1',
+        'text': `${message.text}`
+      }]}
       const textAnalyticsClient = new cognitiveServices.textAnalytics({
         apiKey: 'fc7253e3cc8344c6ae12049c0b80773b',
         endpoint: 'westus.api.cognitive.microsoft.com'
@@ -150,7 +160,6 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
       }).catch((err) => {
         console.log(err)
       })
-
     }
   }
 })
