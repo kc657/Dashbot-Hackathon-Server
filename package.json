@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@slack/client": "^3.14.1",
+    "cognitive-services": "^0.6.0",
     "dashbot": "^9.4.0",
     "fs": "0.0.1-security",
     "jquery": "^3.2.1",
