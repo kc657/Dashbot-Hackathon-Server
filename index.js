@@ -29,16 +29,17 @@ let path = '/text/analytics/v2.0/sentiment'
 let rtm = new RtmClient(config.slackbot_token)
 
 rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (rtmStartData) => {
-  console.log(rtmStartData.channels);
+  console.log(rtmStartData.channels)
   for (const c of rtmStartData.channels) {
     if (c.is_member && c.name === 'general') {
-      channel = c.id, channelName = c.name }
+      channel = c.id, channelName = c.name
+    }
   }
   bot = '<@' + rtmStartData.self.id + '>'
 })
 
 rtm.on(CLIENT_EVENTS.RTM.RTM_CONNECTION_OPENED, function () {
-  console.log('connection opened');
+  console.log('connection opened')
 })
 
 rtm.on(RTM_EVENTS.MESSAGE, function (message) {
@@ -46,18 +47,41 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
     let pieces = []
     if (message.text !== null) {
       pieces = message.text.split(' ')
-      console.log(pieces);
+      console.log(pieces)
 
       if (pieces.length > 1) {
         if (pieces[0] === bot) {
           var helpResponse = '<@' + message.user + '>'
 
           switch (pieces[1].toLowerCase()) {
-            case 'jump':
-              helpResponse += '"Kris Kross will make you jump jump"'
-              break
             case 'help':
               helpResponse += `, I am here for you if you are currently stressed or frustrated at work. Type one of the following commands for more information: ${bot} depression, ${bot} suicide, or ${bot} anxiety`
+              break
+            case 'depression':
+              helpResponse += `, sorry to hear that you are depressed. May I suggest this article...`
+              break
+            case 'anxiety':
+              helpResponse += `, anxiety really sucks. We have some anxiety exercises that may help! Type one of the following commands to try these out: ${bot} exerciseOne or ${bot} exerciseTwo `
+              break
+            case 'suicide':
+              helpResponse += `, please don't! Please care for you, especially your family and friends. Hope this photo from your last trip cheers you up!`
+              break
+            case 'exerciseone':
+              helpResponse += `,One Minute Breathing
+              Start by breathing in and out slowly to become aware of your natural breathing rhythm. Let the breath flow in and out effortlessly, as you prepare your lungs for deeper breaths.
+              Step one: Inhale for a count of four.
+              Step two: Hold for a count of seven. (If you feel dizzy, hold for four until you can build up to seven.)
+              Step three: Exhale for a count of eight.
+              Repeat four times.`
+              break
+            case 'exercisetwo':
+              helpResponse +=  `Sit with your eyes closed and turn your attention to your breathing. Breathe naturally, preferably through the nostrils, without attempting to control your breath. Be aware of the sensation of the breath as it enters and leaves the nostrils.
+
+              Step one: Place one hand on your belly, and the other on your chest. Take a deep breath for a count of four. Hold your breath for a count of three. Exhale for a count of four. The hand on your chest should remain relatively still, while the hand on your belly rises gently upward. Contract your abdominal muscles to exhale, breathing out through your mouth.
+
+              Step two: Concentrate on your breath and forget everything else. Your mind may be busy, and you may feel that this exercise is making your mind busier, but the reality is you're becoming more aware of your mind's busy state.
+
+              Step three: Resist the temptation to follow the different thoughts as they arise, and focus on the sensation of the breath. If you discover that your mind has wandered and is following your thoughts, immediately return it to the breath.`
               break
             default:
               helpResponse += ', sorry I do not understand the command "' + pieces[1] + '". For a list of supported commands, type: ' + bot + ' help'
@@ -68,8 +92,7 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
         }
       }
     }
-  }
-  else if (message.channel === channel) {
+  } else if (message.channel === channel) {
     console.log(message.channel, channel)
     if (message.text !== null) {
       let suggestion
