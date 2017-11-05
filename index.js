@@ -1,10 +1,22 @@
 const RtmClient = require('@slack/client').RtmClient
 const CLIENT_EVENTS = require('@slack/client').CLIENT_EVENTS
 const RTM_EVENTS = require('@slack/client').RTM_EVENTS
+const cognitiveServices = require('cognitive-services')
 const qs = require('querystring')
 const https = require('https')
 const request = require('request')
 const config = require('./env.json')
+const dashbot = require('dashbot')(config.dashbot_token).slack
+const rp = require('request-promise')
+const fs = require('fs')
+const _ = require('lodash')
+let WebSocketClient = require('websocket').client
+let client = new WebSocketClient()
+
+var urlRoot = 'https://tracker.dashbot.io/track'
+var apiKey = config.dashbot_token
+var slackKey = config.slackbot_token
+var debug = true
 
 let channel
 let bot
@@ -17,88 +29,167 @@ let path = '/text/analytics/v2.0/sentiment'
 let rtm = new RtmClient(config.slackbot_token)
 
 rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, (rtmStartData) => {
+  console.log(rtmStartData.channels);
   for (const c of rtmStartData.channels) {
-    if (c.is_member && c.name === 'general') { channel = c.id, channelName = c.name }
+    if (c.is_member && c.name === 'general') {
+      channel = c.id, channelName = c.name }
   }
-  console.log(`Logged in as ${rtmStartData.self.name} of team ${rtmStartData.team.name}`)
-
   bot = '<@' + rtmStartData.self.id + '>'
 })
 
 rtm.on(CLIENT_EVENTS.RTM.RTM_CONNECTION_OPENED, function () {
-  rtm.sendMessage('Testing from index.js!', channel)
+  console.log('connection opened');
 })
 
 rtm.on(RTM_EVENTS.MESSAGE, function (message) {
-  console.log(message)
-  if (message.channel === channel) {
+  if (message.channel === 'D7W5R9KJB') {
+    let pieces = []
     if (message.text !== null) {
+      pieces = message.text.split(' ')
+      console.log(pieces);
 
-      //MICROSOFT TEXT ANALYSIS
-      let response_handler = function (response) {
-        let body = ''
-        response.on('data', function (d) {
-          body += d
-        })
-        response.on('end', function () {
-          let body_ = JSON.parse(body)
-          let body__ = JSON.stringify(body_, null, '  ')
-          console.log(body__)
-        })
-        response.on('error', function (e) {
-          console.log('Error: ' + e.message)
-        })
+      if (pieces.length > 1) {
+        if (pieces[0] === bot) {
+          var helpResponse = '<@' + message.user + '>'
+
+          switch (pieces[1].toLowerCase()) {
+            case 'jump':
+              helpResponse += '"Kris Kross will make you jump jump"'
+              break
+            case 'help':
+              helpResponse += `, I am here for you if you are currently stressed or frustrated at work. Type one of the following commands for more information: ${bot} depression, ${bot} suicide, or ${bot} anxiety`
+              break
+            default:
+              helpResponse += ', sorry I do not understand the command "' + pieces[1] + '". For a list of supported commands, type: ' + bot + ' help'
+              break
+          }
+
+          rtm.sendMessage(helpResponse, message.channel)
+        }
       }
-      let get_sentiments = function (documents) {
-        let body = JSON.stringify(documents)
-        let request_params = {
+    }
+  }
+  else if (message.channel === channel) {
+    console.log(message.channel, channel)
+    if (message.text !== null) {
+      let suggestion
+      let suggestionQuery = message.text
+      let dictionary = [['can you', 'would you kindly'], ['hate', 'dislike'], ['screw you', 'can you not...'], ["coup d'etat", 'If you stage a coup, you will all be fired! Big brother is watching you all...']]
+      dictionary.forEach(function (keyPair) {
+        if (suggestionQuery.includes(keyPair[0])) {
+          suggestion = suggestionQuery.replace(keyPair[0], keyPair[1])
+        }
+      })
+
+      rp('https://slack.com/api/rtm.start?token=' + slackKey, function (error, response) {
+        const parsedData = JSON.parse(response.body)
+
+        // Tell dashbot when you connect.
+        var url = urlRoot + '?apiKey=' + apiKey + '&type=connect&platform=slack'
+        rp({
+          uri: url,
           method: 'POST',
-          hostname: uri,
-          path: path,
-          headers: {
-            'Ocp-Apim-Subscription-Key': accessKey
+          json: parsedData
+        })
+
+        const bot = parsedData.self
+        const team = parsedData.team
+        const baseMessage = {
+          token: slackKey,
+          team: {
+            id: team.id,
+            name: team.name
+          },
+          bot: {
+            id: bot.id
           }
         }
-        let req = https.request(request_params, response_handler)
-        req.write(body)
-        req.end()
+        client.on('connect', function (connection) {
+          console.log('Slack bot ready')
+          connection.on('message', function (message) {
+            const parsedMessage = JSON.parse(message.utf8Data)
+
+            // Tell dashbot when a message arrives
+            var url = urlRoot + '?apiKey=' + apiKey + '&type=incoming&platform=slack'
+            var toSend = _.clone(baseMessage)
+            toSend.message = parsedMessage
+            if (debug) {
+              console.log('Dashbot incoming: ' + url)
+              console.log(JSON.stringify(toSend, null, 2))
+            }
+            rp({
+              uri: url,
+              method: 'POST',
+              json: toSend
+            })
+
+            if (parsedMessage.type === 'message' && parsedMessage.channel &&
+              parsedMessage.channel[0] === 'D' && parsedMessage.user !== bot.id) {
+              // reply on the web socket.
+              let reply = {
+                type: 'message',
+                text: `You should consider phrasing your message like: '${suggestion}'. If you need more help with any emotional issues, type '@talk-kindly help' for more information!`,
+                channel: parsedMessage.channel
+              }
+
+              // Tell dashbot about your response
+              var url = urlRoot + '?apiKey=' + apiKey + '&type=outgoing&platform=slack'
+              var toSend = _.clone(baseMessage)
+              toSend.message = reply
+              if (debug) {
+                console.log('Dashbot outgoing: ' + url)
+                console.log(JSON.stringify(toSend, null, 2))
+              }
+              rp({
+                uri: url,
+                method: 'POST',
+                json: toSend
+              })
+
+              connection.sendUTF(JSON.stringify(reply))
+              suggestion = ''
+            }
+          })
+        })
+        client.connect(parsedData.url)
+      })
+
+      // MICROSOFT TEXT ANALYSIS
+      const headers = {
+        'Content-type': 'application/json'
       }
-      let documents = { 'documents': [
-        { 'id': '1', 'language': 'en', 'text': `${message.text}` }
-      ]}
-      let sentiments = get_sentiments(documents)
-      console.log(sentiments)
-
-      // HISA API DICIONARY
-      var options = { method: 'GET',
-        url: 'http://160.16.100.143:8000/paraphrase/ver1.0/',
-        qs: { q: message.text },
-        headers:
-        { 'postman-token': '34419346-e804-50a0-5c34-b873572d5a28',
-          'cache-control': 'no-cache' } }
-
-      request(options, function (error, response, body) {
-        if (error) throw new Error(error)
-
-        console.log(body)
+      const body = {'documents': [{
+        'language': 'en',
+        'id': '1',
+        'text': `${message.text}`
+      }]}
+      const textAnalyticsClient = new cognitiveServices.textAnalytics({
+        apiKey: 'fc7253e3cc8344c6ae12049c0b80773b',
+        endpoint: 'westus.api.cognitive.microsoft.com'
       })
-
-      // SLACK PUSH PRIVATE MESSAGE TO USER
-      let req = https.request(config.slackbot_option, function (res) {
-        var chunks = []
-        res.on('data', function (chunk) {
-          chunks.push(chunk)
+      let score
+      textAnalyticsClient.sentiment({
+        headers,
+        body
+      }).then((response) => {
+        console.log(response.documents[0].score)
+        score = response.documents[0].score
+        let req = https.request(config.slackbot_option, function (res) {
+          var chunks = []
+          res.on('data', function (chunk) {
+            chunks.push(chunk)
+          })
+          res.on('end', function () {
+            var body = Buffer.concat(chunks)
+          })
         })
-        res.on('end', function () {
-          var body = Buffer.concat(chunks)
-          console.log(body.toString())
-        })
+        req.write(qs.stringify({ token: config.slackbot_token,
+          channel: 'D7W5R9KJB',
+          text: `You recently said '${message.text}' in the ${channelName} channel. Your message may come off as condescending or rude since it scored a ${score} on our sentiment detection. We strongly advise you to change your message to one of the following suggestions below:` }))
+        req.end()
+      }).catch((err) => {
+        console.log(err)
       })
-
-      req.write(qs.stringify({ token: config.slackbot_token,
-        channel: message.user,
-        text: `You recently said '${message.text}' in the ${channelName} channel. Your message may come off as condescending or rude since it scored a 0.4 on our sentiment detection. We strongly advise you to change your message to one of the following suggestions below:` }))
-      req.end()
     }
   }
 })
