@@ -71,7 +71,7 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
               Repeat four times.`
               break
             case 'exercisetwo':
-              helpResponse +=  `Sit with your eyes closed and turn your attention to your breathing. Breathe naturally, preferably through the nostrils, without attempting to control your breath. Be aware of the sensation of the breath as it enters and leaves the nostrils.
+              helpResponse += `Sit with your eyes closed and turn your attention to your breathing. Breathe naturally, preferably through the nostrils, without attempting to control your breath. Be aware of the sensation of the breath as it enters and leaves the nostrils.
 
               Step one: Place one hand on your belly, and the other on your chest. Take a deep breath for a count of four. Hold your breath for a count of three. Exhale for a count of four. The hand on your chest should remain relatively still, while the hand on your belly rises gently upward. Contract your abdominal muscles to exhale, breathing out through your mouth.
 
