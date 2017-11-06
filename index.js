@@ -61,7 +61,7 @@ rtm.on(RTM_EVENTS.MESSAGE, function (message) {
               helpResponse += `, anxiety really sucks. We have some anxiety exercises that may help! Type one of the following commands to try these out: ${bot} exerciseOne or ${bot} exerciseTwo `
               break
             case 'suicide':
-              helpResponse += `, please don't! Please care for you, especially your family and friends. Hope this photo from your last trip cheers you up!`
+              helpResponse += `, please don't! People care for you, especially your family and friends. Hope this photo from your last trip cheers you up!`
               break
             case 'exerciseone':
               helpResponse += `,One Minute Breathing
